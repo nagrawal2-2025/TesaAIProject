@@ -10,7 +10,7 @@ interface LanguageContextType {
 
 const translations: Record<Language, Record<string, string>> = {
   en: {
-    'landing.title': 'Welcome to the Tesa AI Hub Test',
+    'landing.title': 'Welcome to the Tesa AI Hub',
     'landing.subtitle': 'Discover how AI is transforming how we work.',
     'landing.cta': 'Start your AI Journey',
     'overview.title': 'AI Hub',
