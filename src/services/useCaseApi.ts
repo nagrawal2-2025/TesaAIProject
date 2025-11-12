@@ -1,6 +1,5 @@
 import { UseCase } from '../types';
-
-const API_BASE_URL = 'http://localhost:3001/api/usecases';
+import { supabase } from '../lib/supabase';
 
 export interface CreateUseCaseInput {
   title: string;
@@ -22,96 +21,94 @@ export interface CreateUseCaseInput {
   };
 }
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-  count?: number;
-}
-
 export const useCaseApi = {
   async getAll(): Promise<UseCase[]> {
-    const response = await fetch(API_BASE_URL);
+    const { data, error } = await supabase
+      .from('use_cases')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch use cases');
+    if (error) {
+      throw new Error(`Failed to fetch use cases: ${error.message}`);
     }
 
-    const result: ApiResponse<UseCase[]> = await response.json();
-    return result.data || [];
+    return data || [];
   },
 
   async getById(id: string): Promise<UseCase> {
-    const response = await fetch(`${API_BASE_URL}/${id}`);
+    const { data, error } = await supabase
+      .from('use_cases')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch use case');
+    if (error) {
+      throw new Error(`Failed to fetch use case: ${error.message}`);
     }
 
-    const result: ApiResponse<UseCase> = await response.json();
-
-    if (!result.data) {
+    if (!data) {
       throw new Error('Use case not found');
     }
 
-    return result.data;
+    return data as UseCase;
   },
 
   async create(input: CreateUseCaseInput): Promise<UseCase> {
-    const response = await fetch(API_BASE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
+    const { data, error } = await supabase
+      .from('use_cases')
+      .insert({
+        title: input.title,
+        short_description: input.short_description,
+        full_description: input.full_description,
+        department: input.department,
+        status: input.status,
+        owner_name: input.owner_name,
+        owner_email: input.owner_email,
+        business_impact: input.business_impact || null,
+        technology_stack: input.technology_stack || [],
+        tags: input.tags || [],
+        application_url: input.application_url || null,
+        internal_links: input.internal_links || {},
+        related_use_case_ids: []
+      })
+      .select()
+      .single();
 
-    if (!response.ok) {
-      const result: ApiResponse<never> = await response.json();
-      throw new Error(result.message || 'Failed to create use case');
+    if (error) {
+      throw new Error(`Failed to create use case: ${error.message}`);
     }
 
-    const result: ApiResponse<UseCase> = await response.json();
-
-    if (!result.data) {
-      throw new Error('Failed to create use case');
-    }
-
-    return result.data;
+    return data as UseCase;
   },
 
   async update(id: string, input: Partial<CreateUseCaseInput>): Promise<UseCase> {
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
-    });
+    const updateData: any = {
+      ...input,
+      updated_at: new Date().toISOString()
+    };
 
-    if (!response.ok) {
-      const result: ApiResponse<never> = await response.json();
-      throw new Error(result.message || 'Failed to update use case');
+    const { data, error } = await supabase
+      .from('use_cases')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update use case: ${error.message}`);
     }
 
-    const result: ApiResponse<UseCase> = await response.json();
-
-    if (!result.data) {
-      throw new Error('Failed to update use case');
-    }
-
-    return result.data;
+    return data as UseCase;
   },
 
   async delete(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'DELETE',
-    });
+    const { error } = await supabase
+      .from('use_cases')
+      .delete()
+      .eq('id', id);
 
-    if (!response.ok) {
-      const result: ApiResponse<never> = await response.json();
-      throw new Error(result.message || 'Failed to delete use case');
+    if (error) {
+      throw new Error(`Failed to delete use case: ${error.message}`);
     }
   },
 };
