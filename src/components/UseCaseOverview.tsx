@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Home, Plus } from 'lucide-react';
+import { Search, Home, Plus, AlertCircle, Loader2 } from 'lucide-react';
 import { UseCase, Department, UseCaseStatus } from '../types';
 import UseCaseCard from './UseCaseCard';
 import UseCaseDetailModal from './UseCaseDetailModal';
@@ -7,10 +7,14 @@ import NewUseCaseModal, { NewUseCaseData } from './NewUseCaseModal';
 import Footer from './Footer';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageSwitcher from './LanguageSwitcher';
+import { useCaseApi } from '../services/useCaseApi';
 
 interface UseCaseOverviewProps {
   useCases: UseCase[];
   onBackToHome: () => void;
+  isLoading?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
 }
 
 const departments: Array<'All' | Department> = [
@@ -34,7 +38,7 @@ const statuses: Array<'All' | UseCaseStatus> = [
   'Archived'
 ];
 
-export default function UseCaseOverview({ useCases, onBackToHome }: UseCaseOverviewProps) {
+export default function UseCaseOverview({ useCases, onBackToHome, isLoading = false, error = null, onRefresh }: UseCaseOverviewProps) {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<'All' | Department>('All');
@@ -73,8 +77,17 @@ export default function UseCaseOverview({ useCases, onBackToHome }: UseCaseOverv
     }
   };
 
-  const handleNewUseCaseSubmit = (data: NewUseCaseData) => {
-    console.log('New use case submitted:', data);
+  const handleNewUseCaseSubmit = async (data: NewUseCaseData) => {
+    try {
+      await useCaseApi.create(data);
+      setShowNewUseCaseModal(false);
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (err) {
+      console.error('Failed to create use case:', err);
+      alert('Failed to create use case. Please try again.');
+    }
   };
 
   return (
@@ -155,25 +168,52 @@ export default function UseCaseOverview({ useCases, onBackToHome }: UseCaseOverv
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-4 text-gray-600">
-          {t('overview.showing')} {filteredUseCases.length} {t('overview.of')} {useCases.length} {t('overview.useCases')}
-        </div>
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-red-800 font-medium">Failed to load use cases</p>
+              <p className="text-red-600 text-sm mt-1">{error}</p>
+            </div>
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
 
-        {filteredUseCases.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-xl text-gray-500">{t('overview.noResults')}</p>
-            <p className="text-gray-400 mt-2">{t('overview.tryAdjusting')}</p>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-12 h-12 text-[#E30613] animate-spin" />
+            <p className="text-gray-600 mt-4">Loading use cases...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredUseCases.map((useCase) => (
-              <UseCaseCard
-                key={useCase.id}
-                useCase={useCase}
-                onClick={() => setSelectedUseCase(useCase)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="mb-4 text-gray-600">
+              {t('overview.showing')} {filteredUseCases.length} {t('overview.of')} {useCases.length} {t('overview.useCases')}
+            </div>
+
+            {filteredUseCases.length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-xl text-gray-500">{t('overview.noResults')}</p>
+                <p className="text-gray-400 mt-2">{t('overview.tryAdjusting')}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredUseCases.map((useCase) => (
+                  <UseCaseCard
+                    key={useCase.id}
+                    useCase={useCase}
+                    onClick={() => setSelectedUseCase(useCase)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
 

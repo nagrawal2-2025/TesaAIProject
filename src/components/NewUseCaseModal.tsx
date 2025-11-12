@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Department, UseCaseStatus } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface NewUseCaseModalProps {
   onClose: () => void;
-  onSubmit: (data: NewUseCaseData) => void;
+  onSubmit: (data: NewUseCaseData) => Promise<void>;
 }
 
 export interface NewUseCaseData {
@@ -34,6 +34,7 @@ const statuses: UseCaseStatus[] = ['Ideation', 'Pre-Evaluation', 'Evaluation', '
 export default function NewUseCaseModal({ onClose, onSubmit }: NewUseCaseModalProps) {
   const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const totalSteps = 4;
 
   const [formData, setFormData] = useState<NewUseCaseData>({
@@ -66,9 +67,16 @@ export default function NewUseCaseModal({ onClose, onSubmit }: NewUseCaseModalPr
     }
   };
 
-  const handleSubmit = () => {
-    onSubmit(formData);
-    onClose();
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+      onClose();
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isStepValid = () => {
@@ -475,8 +483,14 @@ export default function NewUseCaseModal({ onClose, onSubmit }: NewUseCaseModalPr
           ) : (
             <button
               onClick={handleSubmit}
-              className="px-6 py-2 bg-[#E30613] text-white rounded-lg hover:bg-[#c00510] transition-colors"
+              disabled={isSubmitting}
+              className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors ${
+                isSubmitting
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-[#E30613] text-white hover:bg-[#c00510]'
+              }`}
             >
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {t('newUseCase.submit')}
             </button>
           )}
